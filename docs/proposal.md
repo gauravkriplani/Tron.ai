@@ -3,15 +3,13 @@ layout: default
 title:  Proposal
 ---
 
-# {{ page.title }}
-
 ### Summary of the Project
 
 
 ### Project Goals
-## Minimum Goal
-## Realistic Goal
-## Moonshot Goal
+#### Minimum Goal
+#### Realistic Goal
+#### Moonshot Goal
 
 ### AI/ML Algorithms
 
