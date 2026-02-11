@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tron-ai"
+version = "0.0.1"
+description = "Simple Tron gridworld Gymnasium env + DQN training"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "CS_175 Team" }]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tron_ai*"]
