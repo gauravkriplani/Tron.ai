@@ -50,6 +50,12 @@ def main() -> None:
         choices=["auto", "mlp", "cnn", "dueling_cnn"],
         help="Q-network architecture; auto picks cnn for larger grids",
     )
+    p.add_argument(
+        "--load",
+        type=str,
+        default=None,
+        help="Path to a checkpoint to resume training from (for curriculum training)",
+    )
     args = p.parse_args()
 
     os.makedirs(os.path.dirname(args.save) or ".", exist_ok=True)
@@ -70,6 +76,16 @@ def main() -> None:
 
     q_net = QNetwork(obs_shape=env.observation_space.shape, num_actions=env.action_space.n, arch=args.arch).to(device)
     target_net = QNetwork(obs_shape=env.observation_space.shape, num_actions=env.action_space.n, arch=args.arch).to(device)
+
+    if args.load:
+        print(f"Loading checkpoint from {args.load}")
+        try:
+            ckpt = torch.load(args.load, map_location=device, weights_only=True)
+        except Exception:
+            ckpt = torch.load(args.load, map_location=device, weights_only=False)
+        q_net.load_state_dict(ckpt["model"])
+        print("Checkpoint loaded successfully")
+
     target_net.load_state_dict(q_net.state_dict())
 
     opt = torch.optim.Adam(q_net.parameters(), lr=args.lr)

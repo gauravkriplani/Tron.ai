@@ -206,11 +206,7 @@ cython_debug/
 .vscode/
 .idea/
 
-# Training outputs / artifacts
-checkpoints/
-*.pt
-*.pth
-*.onnx
+
 
 # Common experiment folders
 runs/

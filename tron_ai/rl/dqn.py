@@ -37,11 +37,13 @@ class QNetwork(nn.Module):
             self._dueling = False
         elif arch in ("cnn", "dueling_cnn"):
             self._core = nn.Sequential(
-                nn.Conv2d(c, 32, kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(c, 32, kernel_size=3, stride=1, padding=1),
                 nn.ReLU(),
                 nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
                 nn.ReLU(),
-                nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1),
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1),
                 nn.ReLU(),
                 nn.Flatten(),
             )
@@ -126,6 +128,10 @@ class ReplayBuffer:
         return ReplayBatch(obs=obs, actions=actions, rewards=rewards, next_obs=next_obs, dones=dones)
 
 
+# Actions: 0=UP, 1=RIGHT, 2=DOWN, 3=LEFT
+_ACTION_DELTAS = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}
+
+
 @torch.no_grad()
 def select_action(
     q_net: nn.Module,
@@ -136,6 +142,19 @@ def select_action(
     device: torch.device,
 ) -> int:
     if rng.random() < float(epsilon):
+        # action masking: enforcenon immediate death
+        blocked = obs[0]  
+        head_pos = np.argwhere(obs[1] == 1.0)  
+        if len(head_pos) > 0:
+            r, c = int(head_pos[0, 0]), int(head_pos[0, 1])
+            safe = []
+            for a in range(num_actions):
+                dr, dc = _ACTION_DELTAS[a]
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < blocked.shape[0] and 0 <= nc < blocked.shape[1] and not blocked[nr, nc]:
+                    safe.append(a)
+            if safe:
+                return int(rng.choice(safe))
         return int(rng.integers(0, num_actions))
 
     x = torch.from_numpy(obs).unsqueeze(0).to(device)

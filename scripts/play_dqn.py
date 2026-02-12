@@ -30,11 +30,25 @@ def load_checkpoint(path: str, device: torch.device):
         return torch.load(path, map_location=device, weights_only=False)
 
 
+_ACTION_DELTAS = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # UP, RIGHT, DOWN, LEFT
+
+
 @torch.no_grad()
 def act_greedy(q_net: QNetwork, obs: np.ndarray, device: torch.device) -> int:
     x = torch.from_numpy(obs).unsqueeze(0).to(device)
-    q = q_net(x)
-    return int(torch.argmax(q, dim=1).item())
+    q = q_net(x).squeeze(0)  # (num_actions,)
+
+    # Action masking: set Q-values for crash moves to -inf
+    blocked = obs[0]  # channel 0 = blocked grid
+    head_pos = np.argwhere(obs[1] == 1.0)  # channel 1 = agent head
+    if len(head_pos) > 0:
+        r, c = int(head_pos[0, 0]), int(head_pos[0, 1])
+        for a, (dr, dc) in enumerate(_ACTION_DELTAS):
+            nr, nc = r + dr, c + dc
+            if nr < 0 or nr >= blocked.shape[0] or nc < 0 or nc >= blocked.shape[1] or blocked[nr, nc]:
+                q[a] = float("-inf")
+
+    return int(torch.argmax(q).item())
 
 
 def main() -> None:
