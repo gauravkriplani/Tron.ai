@@ -8,16 +8,14 @@ Source code: https://github.com/gauravkriplani/Tron.ai
 Reports:
 
 - [Proposal](proposal.html)
-- [Status](status.html)
+- [Status](status.html)  <!-- Project summary updated -->
 - [Final](final.html)
 
-## Demo video
+## Demo visual
 
-<!-- Placeholder: add demo video to docs/assets as `demo.mp4` -->
+<!-- Placeholder image: add `tron.gif` to `docs/assets` -->
 
 <div class="video-container">
-<video controls width="640" height="360" aria-label="Project demo video">
-	<source src="/assets/tron.mov" type="video/mov">
-	Your browser does not support the video tag. Add `demo.mp4` to `docs/assets`.
-</video>
+  <img src="/assets/tron.gif" alt="Tron demo" width="640" height="360">
+  <p class="text-muted">If the image is missing, add `tron.gif` to `docs/assets`.</p>
 </div>
