@@ -16,6 +16,6 @@ Reports:
 <!-- Placeholder image: add `tron.gif` to `docs/assets` -->
 
 <div class="video-container">
-  <img src="docs/assets/tron.gif" alt="Tron demo" width="640" height="360">
+  <img src="{{ 'assets/tron.gif' | relative_url }}" alt="Tron demo" width="640" height="360">
   <p class="text-muted">If the image is missing, add `tron.gif` to `docs/assets`.</p>
 </div>
