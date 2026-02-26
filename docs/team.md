@@ -14,5 +14,7 @@ title:  Team
 
 ## Justin Siek
 ***Personal Website***: [justinsiek.com](https://justinsiek.com)
-***Githu***: [github.com/justinsiek](https://github.com/justinsiek)
+
+***Github***: [github.com/justinsiek](https://github.com/justinsiek)
+
 ***LinkedIn***: [linkedin.com/in/justin-siek](https://linkedin.com/in/justin-siek)
