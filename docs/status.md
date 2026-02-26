@@ -63,6 +63,8 @@ Another idea we plan to explore is self play training, where the agent trains ag
 - Outlining algorithms for understanding
 - Discussing implementation approaches
 
+### Video Summary
+
 <div class="video-container">
 	<video controls width="640" height="360">
 		<source src="{{ 'assets/175%20Video.mp4' | relative_url }}" type="video/mp4">

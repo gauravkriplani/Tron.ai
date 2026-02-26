@@ -5,12 +5,15 @@ title:  Team
 
 # {{ page.title }}
 
-
 ## Gaurav Kriplani
 ***kriplang***: kriplang
 
+***LinkedIn***: [https://www.linkedin.com/in/gaurav-kriplani/](https://www.linkedin.com/in/gaurav-kriplani/)
+
 ## Maan Patel
 ***maanvp***: maanvp
+
+***LinkedIn***: [linkedin.com/in/maan-patel](https://www.linkedin.com/in/maanvpatel)
 
 ## Justin Siek
 ***Personal Website***: [justinsiek.com](https://justinsiek.com)
