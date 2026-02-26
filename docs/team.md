@@ -8,7 +8,7 @@ title:  Team
 ## Gaurav Kriplani
 ***kriplang***: kriplang
 
-***LinkedIn***: [https://www.linkedin.com/in/gaurav-kriplani/](https://www.linkedin.com/in/gaurav-kriplani/)
+***LinkedIn***: [linkedin.com/in/gaurav-kriplani](https://www.linkedin.com/in/gaurav-kriplani/)
 
 ## Maan Patel
 ***maanvp***: maanvp
