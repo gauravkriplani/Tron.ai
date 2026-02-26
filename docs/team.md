@@ -13,4 +13,6 @@ title:  Team
 ***maanvp***: maanvp
 
 ## Justin Siek
-***siekj***: siekj
+***Personal Website***: [justinsiek.com](https://justinsiek.com)
+***Githu***: [github.com/justinsiek](https://github.com/justinsiek)
+***LinkedIn***: [linkedin.com/in/justin-siek](https://linkedin.com/in/justin-siek)
