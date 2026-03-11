@@ -14,7 +14,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from tron_ai.envs import TronEnv
-from tron_ai.rl.dqn import QNetwork, ReplayBuffer, dqn_loss, select_action
+from tron_ai.rl.dqn import PERBatch, PrioritizedReplayBuffer, QNetwork, ReplayBuffer, dqn_loss, select_action
 
 
 def linear_schedule(start: float, end: float, duration: int, t: int) -> float:
@@ -47,14 +47,33 @@ def main() -> None:
         "--arch",
         type=str,
         default="auto",
-        choices=["auto", "mlp", "cnn", "dueling_cnn"],
+        choices=["auto", "mlp", "dueling_mlp", "cnn", "dueling_cnn"],
         help="Q-network architecture; auto picks cnn for larger grids",
+    )
+    p.add_argument(
+        "--no-double",
+        action="store_true",
+        help="Disable Double Q-learning",
     )
     p.add_argument(
         "--load",
         type=str,
         default=None,
         help="Path to a checkpoint to resume training from (for curriculum training)",
+    )
+    p.add_argument(
+        "--per",
+        action="store_true",
+        help="Use Prioritized Experience Replay buffer instead of standard uniform buffer",
+    )
+    p.add_argument(
+        "--per-alpha", type=float, default=0.6, help="PER alpha parameter (how much prioritization is used)"
+    )
+    p.add_argument(
+        "--per-beta-start", type=float, default=0.4, help="PER starting beta (importance sampling correction)"
+    )
+    p.add_argument(
+        "--n-step", type=int, default=1, help="N-step returns for the replay buffer (default 1 is standard DQN). Replaces 1-step returns."
     )
     args = p.parse_args()
 
@@ -89,7 +108,10 @@ def main() -> None:
     target_net.load_state_dict(q_net.state_dict())
 
     opt = torch.optim.Adam(q_net.parameters(), lr=args.lr)
-    rb = ReplayBuffer(args.buffer_size, obs_shape=env.observation_space.shape, device=device)
+    if args.per:
+        rb = PrioritizedReplayBuffer(args.buffer_size, obs_shape=env.observation_space.shape, device=device, alpha=args.per_alpha, n_step=args.n_step, gamma=args.gamma)
+    else:
+        rb = ReplayBuffer(args.buffer_size, obs_shape=env.observation_space.shape, device=device, n_step=args.n_step, gamma=args.gamma)
 
     ep_return = 0.0
     ep_len = 0
@@ -128,8 +150,19 @@ def main() -> None:
             ep_len = 0
 
         if t >= args.start_learning and t % args.train_every == 0 and len(rb) >= args.batch_size:
-            batch = rb.sample(args.batch_size, rng)
-            loss = dqn_loss(q_net=q_net, target_net=target_net, batch=batch, gamma=args.gamma)
+            if args.per:
+                beta = linear_schedule(args.per_beta_start, 1.0, args.total_steps, t)
+                batch = rb.sample_per(args.batch_size, rng, beta=beta)
+            else:
+                batch = rb.sample(args.batch_size, rng)
+                
+            # When using N-Step returns, the mathematical target gamma for the N-th step Q-value is gamma^N
+            target_gamma = args.gamma ** args.n_step
+            loss, td_errors = dqn_loss(q_net=q_net, target_net=target_net, batch=batch, gamma=target_gamma, double_dqn=not args.no_double)
+            
+            if args.per:
+                rb.update_priorities(batch.indices, td_errors.cpu().numpy())
+                
             opt.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(q_net.parameters(), 10.0)

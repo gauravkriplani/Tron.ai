@@ -183,3 +183,59 @@ class DQNOpponent(OpponentPolicy):
         x = self._torch.from_numpy(obs).unsqueeze(0).to(self._device)
         q = self._net(x)
         return int(self._torch.argmax(q, dim=1).item())
+
+@dataclass
+class PPOOpponent(OpponentPolicy):
+    """Opponent driven by a PPO checkpoint trained on the same observation format."""
+
+    checkpoint_path: str
+    device: str = "cpu"
+
+    def __post_init__(self) -> None:
+        import torch
+
+        self._torch = torch
+        self._device = torch.device(self.device)
+
+        try:
+            ckpt = torch.load(self.checkpoint_path, map_location=self._device, weights_only=True)
+        except Exception:
+            ckpt = torch.load(self.checkpoint_path, map_location=self._device, weights_only=False)
+
+        obs_shape = tuple(int(x) for x in ckpt["obs_shape"])
+        num_actions = int(ckpt["num_actions"])
+        arch = ckpt.get("arch", "auto")
+
+        from tron_ai.rl.ppo import ActorCritic
+
+        self._net = ActorCritic(obs_shape=obs_shape, num_actions=num_actions, arch=arch)
+        self._net.load_state_dict(ckpt["model"])
+        self._net.to(self._device)
+        self._net.eval()
+
+    def act(
+        self,
+        rng: np.random.Generator,
+        grid_blocked: np.ndarray,
+        self_pos: tuple[int, int],
+        self_dir: int,
+        other_pos: tuple[int, int],
+    ) -> int:
+        from tron_ai.rl.ppo import select_action
+        
+        h, w = grid_blocked.shape
+        obs = np.zeros((3, h, w), dtype=np.float32)
+        obs[0] = grid_blocked.astype(np.float32)
+        obs[1, self_pos[0], self_pos[1]] = 1.0
+        obs[2, other_pos[0], other_pos[1]] = 1.0
+
+        num_actions = self._net.num_actions
+
+        action, _, _, _ = select_action(
+            actor_critic=self._net,
+            obs=obs,
+            num_actions=num_actions,
+            device=self._device,
+            deterministic=True,
+        )
+        return action
