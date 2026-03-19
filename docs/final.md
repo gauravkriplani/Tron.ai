@@ -227,7 +227,7 @@ This prevents trivial learning failures where agents spend countless steps crash
 
 This representation significantly outperformed simpler 3-channel baselines (blocked, self head, opponent head) and provided agents with strategic information for long-term planning.
 
-### Final Results
+### Evaluation
 
 ### Resources Used
 
