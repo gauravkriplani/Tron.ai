@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Preview - Final Report</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <style>body{padding:2rem;} pre{white-space:pre-wrap;}</style>
+
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$','$'], ['\\(','\\)']],
+          displayMath: [['$$','$$'], ['\\[','\\]']],
+          processEscapes: true
+        },
+        options: {
+          skipHtmlTags: ['script','noscript','style','textarea','pre','code']
+        }
+      };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Final Report (Preview)</h2>
+      <div id="content">Loading...</div>
+    </div>
+
+    <script>
+      async function loadAndRender() {
+        try {
+          const res = await fetch('final.md');
+          let text = await res.text();
+          // strip YAML front matter if present
+          if (text.startsWith('---')) {
+            const parts = text.split(/---\s*\n/);
+            if (parts.length >= 3) {
+              // parts[0] is empty before first ---, parts[1] is frontmatter
+              text = parts.slice(2).join('---\n');
+            }
+          }
+          // convert markdown to HTML
+          const html = marked.parse(text);
+          document.getElementById('content').innerHTML = html;
+          // typeset math
+          if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise();
+          }
+        } catch (err) {
+          document.getElementById('content').textContent = 'Error loading final.md: ' + err;
+        }
+      }
+      loadAndRender();
+    </script>
+  </body>
+</html>
