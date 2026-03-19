@@ -6,7 +6,9 @@ title:  Final Report
 ### Project Summary
 
 Our project studies how to train intelligent agents for Tron, an arcade-style light-cycle game where two players move simultaneously on a grid and leave permanent trails that become walls. The problem we address is learning a policy that can make strong decisions in real time under adversarial pressure: the agent must avoid immediate collisions while also planning several steps ahead to control space and force the opponent into losing positions. This is challenging because the game state changes every turn, rewards are delayed (good or bad consequences often appear later), and a locally “safe” move can still lead to a strategic loss. In other words, the agent must reason about both short-term survival and long-term territorial advantage in a non-stationary environment where both players continuously reshape the board.
+
 The goal of the project is to design, train, and evaluate reinforcement learning agents that can discover effective survival and trapping strategies directly from game observations, then compare value-based and policy-based approaches in the same environment. We evaluate methods such as DQN and PPO against heuristic opponents using win rate, survival time, and cumulative reward. This problem is not trivial to solve with hand-written rules alone: heuristics can handle obvious local dangers, but they break down across the enormous number of possible board configurations and opponent responses. AI/ML is necessary because reinforcement learning can learn nuanced, high-dimensional decision patterns from experience, enabling behaviors like zoning, baiting, and timing that are difficult to encode manually and essential for strong competitive play.
+
 
 
 
