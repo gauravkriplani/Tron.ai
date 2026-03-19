@@ -104,16 +104,16 @@ This allows separate learning of state value $V(s)$ and action advantages $A(s,a
 |---|---|---|
 | Buffer capacity | 200,000 | Standard for mid-scale (Mnih et al., 2015 used 1M for Atari) |
 | Batch size | 128 | Increased from 32 (Mnih et al., 2015) for stability on smaller grid |
-| Discount $\gamma$ | 0.99 | Standard default (Sutton & Barto, 2018) |
-| Learning rate | $1 \times 10^{-4}$ | Standard for Adam optimizer in DQN literature |
+| Discount (gamma) | 0.99 | Standard default (Sutton & Barto, 2018) |
+| Learning rate | 1e-4 | Standard for Adam optimizer in DQN literature |
 | Warm-up steps | 20,000 | Tuned to ensure 10% buffer filled before learning begins |
 | Train frequency | Every 4 steps | Standard (Mnih et al., 2015) |
 | Target update interval | 10,000 steps | Standard hard-update interval (Mnih et al., 2015) |
-| $\varepsilon$ start | 1.0 | Standard; full exploration initially |
-| $\varepsilon$ end | 0.05 | Tuned; lower than typical 0.1 to encourage exploitation of learned policy |
-| $\varepsilon$ decay duration | 1,000,000 steps | Tuned empirically; decays over ~50% of total training |
-| PER $\alpha$ | 0.6 | Default (Schaul et al., 2016) |
-| PER $\beta$ start | 0.4 | Default; anneals to 1.0 over training (Schaul et al., 2016) |
+| Epsilon start | 1.0 | Standard; full exploration initially |
+| Epsilon end | 0.05 | Tuned; lower than typical 0.1 to encourage exploitation of learned policy |
+| Epsilon decay duration | 1,000,000 steps | Tuned empirically; decays over ~50% of total training |
+| PER alpha | 0.6 | Default (Schaul et al., 2016) |
+| PER beta start | 0.4 | Default; anneals to 1.0 over training (Schaul et al., 2016) |
 
 **Network Architecture**
 
@@ -133,118 +133,53 @@ Dueling heads:
 
 #### Proximal Policy Optimization (PPO)
 
-PPO (Schulman et al., 2017) is a policy gradient method that learns a stochastic policy $\pi_\theta(a|s)$ and value function $V_\theta(s)$ via clipped policy objectives. Unlike value-based methods like DQN, PPO is **on-policy**: it collects fresh trajectories from the current policy for each update. The clipping mechanism constrains policy updates to prevent large, destabilizing changes, which stabilizes training compared to earlier policy gradient methods.
-
-PPO is particularly well-suited for Tron because the stochastic policy naturally explores different strategies during rollout collection, potentially discovering emergent trapping or territorial behaviors that greedy value functions might miss.
+PPO (Schulman et al., 2017) is a policy gradient method that learns a stochastic policy $\pi_\theta(a|s)$ and value function via clipped policy objectives. Unlike DQN, PPO is **on-policy**: it collects fresh trajectories from the current policy for each update. The clipping mechanism prevents large, destabilizing policy updates.
 
 **Data Structure**
 
-The rollout buffer stores one complete trajectory of 2,048 environment steps:
-
-| Component | Shape / Type | Description |
-|---|---|---|
-| Observation $s_t$ | (7, 20, 20) | 7-channel grid observation |
-| Action $a_t$ | int ∈ [0, 3] | Sampled action |
-| Log-probability $\log \pi(a_t\|s_t)$ | float | Log policy probability (for importance correction) |
-| Reward $r_t$ | float | Immediate reward |
-| Done flag $d_t$ | bool | Episode termination |
-| Value estimate $V(s_t)$ | float | Critic's state value |
-| Action mask $m_t$ | [4] bool | Safe actions during rollout |
-
-After each rollout, we compute returns and advantages, then shuffle and split into minibatches of 64 for 10 epochs of gradient updates.
+Rollout buffer (2,048 steps): observations, actions, log-probabilities, rewards, done flags, value estimates, and action masks.
 
 **Data Sampling**
 
-Data is collected on-policy from rollout trajectories:
+Data collected on-policy via rollout:
 
 ```
-function CollectRollout(env, policy, num_steps):
-    observations, actions, rewards, log_probs, values, dones, masks = []
-    obs, _ = env.reset()
-    
-    for t in 1 to num_steps:
-        action, log_prob, value, mask = policy.select_action(obs)
-        next_obs, reward, done, _ = env.step(action)
-        
-        observations.append(obs)
-        actions.append(action)
-        rewards.append(reward)
-        log_probs.append(log_prob)
-        values.append(value)
-        dones.append(done)
-        masks.append(mask)
-        
-        obs = next_obs
-        if done: obs, _ = env.reset()
-    
-    return observations, actions, rewards, log_probs, values, dones, masks
+while episode_not_done:
+    action, log_prob, value, mask = policy.select_action(obs)
+    obs, reward, done = env.step(action)
+    store(obs, action, log_prob, reward, value, done, mask)
 ```
 
-After rollout, we compute advantages using GAE (Schulman et al., 2016), shuffle, and create minibatches.
+After rollout, compute GAE advantages, shuffle, and update over 10 epochs in minibatches of 64.
 
-**Loss Equation and Advantage Estimation**
+**Loss Equation**
 
-Generalized Advantage Estimation (GAE; Schulman et al., 2016) computes advantages:
+GAE (Schulman et al., 2016): $\hat{A}_t = \sum_{l=0}^{\infty} (\gamma\lambda)^l \delta_{t+l}^V$ with $\gamma=0.99$, $\lambda=0.95$.
 
-$$\hat{A}_t^{(\lambda)} = \sum_{l=0}^{\infty} (\gamma\lambda)^l \delta_{t+l}^V, \quad \delta_t^V = r_t + \gamma V(s_{t+1})(1-d_t) - V(s_t)$$
+PPO loss: $\mathcal{L} = \mathbb{E}_t[\mathcal{L}^{\text{CLIP}} - c_e \mathcal{H}[\pi] + c_v \mathcal{L}^V]$
 
-with $\gamma = 0.99$ and $\lambda = 0.95$ (default from Schulman et al., 2017). Returns: $\hat{R}_t = \hat{A}_t + V(s_t)$.
+$$\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t,\, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)], \quad \mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2$$
 
-PPO loss (Schulman et al., 2017):
-
-$$\mathcal{L}_t^{\text{PPO}} = \mathbb{E}_t \left[ \mathcal{L}_t^{\text{CLIP}} - c_e \mathcal{H}[\pi_\theta(s_t)] + c_v \mathcal{L}_t^V \right]$$
-
-where:
-
-**Clipped Policy Loss:**
-$$\mathcal{L}_t^{\text{CLIP}} = \mathbb{E}_t \left[ \min \left( r_t(\theta) \hat{A}_t,\, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t \right) \right]$$
-
-$r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\text{old}}(a_t|s_t)}$ is the probability ratio; $\epsilon = 0.2$ is the clip range.
-
-**Value Loss (clipped MSE):**
-$$\mathcal{L}_t^V = \frac{1}{2} \mathbb{E}_t \left[ \max \Big( (V_\theta(s_t) - \hat{R}_t)^2,\, (\text{clip}(V_\theta(s_t), V_{\text{old}}(s_t) - \epsilon, V_{\text{old}}(s_t) + \epsilon) - \hat{R}_t)^2 \Big) \right]$$
-
-**Entropy Bonus:**
-$$\mathcal{H}[\pi_\theta] = \mathbb{E}_t \left[ -\sum_a \pi_\theta(a|s_t) \log \pi_\theta(a|s_t) \right]$$
-
-Encourages exploration with coefficient $c_e = 0.01$.
+where $r_t = \pi_\theta(a_t|s_t) / \pi_{\text{old}}(a_t|s_t)$, $\epsilon=0.2$, $c_e=0.01$, $c_v=0.5$.
 
 **Tron Application**
 
-*Observation, Actions, Rewards:* Identical to DQN (7-channel grid, 4 discrete actions, same reward structure).
+Observation, actions, rewards: identical to DQN. Training: 2M total steps, 2,048-step rollouts, 10 epochs per update. Action masking applied during policy sampling.
 
-*Action Masking:* Safe actions identified via the same collision-checking heuristic as DQN. During policy sampling, unsafe action logits are set to $-\infty$, so softmax assigns them zero probability. Masks are stored in the rollout buffer and re-applied during updates.
+**Key Hyperparameters (with Sources):**
 
-*Training Schedule:*
-- Total environment steps: 2,000,000
-- Rollout length per update: 2,048 steps
-- Update epochs per rollout: 10
-- Number of updates: 2,000,000 / 2,048 ≈ 976 total update cycles
-- Total gradient updates: 976 × 10 epochs × (2,048 / 64 minibatch size) ≈ 312,000 updates
-
-*Hyperparameters (with Sources):*
-
-| Parameter | Value | Source / Justification |
+| Parameter | Value | Source |
 |---|---|---|
-| Rollout length | 2,048 | Default from CleanRL / Schulman et al., 2017 |
-| Minibatch size | 64 | Default from CleanRL |
-| Update epochs per rollout | 10 | Default from CleanRL; balances stability vs. sample reuse |
-| Discount $\gamma$ | 0.99 | Standard (Sutton & Barto, 2018) |
-| GAE $\lambda$ | 0.95 | Default (Schulman et al., 2016) |
-| Clip coefficient $\epsilon$ | 0.2 | Standard (Schulman et al., 2017) |
-| Entropy coef $c_e$ | 0.01 | Default from CleanRL; smaller value = less over-exploration |
-| Value loss coef $c_v$ | 0.5 | Default from CleanRL |
-| Learning rate | $3 \times 10^{-4}$ | Default Adam lr from CleanRL |
-| Adam $\epsilon$ | $1 \times 10^{-5}$ | Default from CleanRL (tighter than PyTorch default 1e-8) |
-| Max gradient norm | 0.5 | Default from CleanRL; prevents gradient explosions |
+| Rollout length | 2,048 | CleanRL / Schulman et al., 2017 |
+| Update epochs | 10 | CleanRL |
+| Discount (gamma) | 0.99 | Standard |
+| GAE lambda | 0.95 | Schulman et al., 2016 |
+| Learning rate | 3e-4 | CleanRL default |
+| Entropy coef | 0.01 | CleanRL |
+| Value coef | 0.5 | CleanRL |
+| Grad norm clip | 0.5 | CleanRL |
 
-**Network Architecture**
-
-Shared CNN backbone (identical to DQN, outputs 512 features) → two independent heads:
-- **Actor head:** FC(512 → 4 logits) with orthogonal initialization (std=$\sqrt{2}$)
-- **Critic head:** FC(512 → 1 value) with orthogonal initialization (std=1.0)
-
-Orthogonal weight initialization follows OpenAI baselines recommendations (Dhariwal et al., 2017).
+**Network Architecture:** Shared 4-layer CNN (32, 64, 128, 128 filters) → FC 512 → actor (4 logits) and critic (1 value) heads.
 
 ---
 
@@ -290,7 +225,7 @@ This prevents trivial learning failures where agents spend countless steps crash
 | 5 | Flood-fill reachable area | Free space from agent's perspective |
 | 6 | Voronoi territory | Relative space control metric |
 
-This rich representation significantly outperformed simpler 3-channel baselines (blocked, self head, opponent head) and provided agents with strategic information for long-term planning.
+This representation significantly outperformed simpler 3-channel baselines (blocked, self head, opponent head) and provided agents with strategic information for long-term planning.
 
 ### Final Results
 
