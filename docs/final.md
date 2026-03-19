@@ -131,7 +131,7 @@ Dueling heads:
 
 #### Proximal Policy Optimization (PPO)
 
-PPO (Schulman et al., 2017) is a policy gradient method that learns a stochastic policy pi(a|s) and value function via clipped policy objectives. Unlike DQN, PPO is **on-policy**: it collects fresh trajectories from the current policy for each update. The clipping mechanism prevents large, destabilizing policy updates.
+PPO (Schulman et al., 2017) is a policy gradient method that learns a stochastic policy pi(a\|s) and value function via clipped policy objectives. Unlike DQN, PPO is **on-policy**: it collects fresh trajectories from the current policy for each update. The clipping mechanism prevents large, destabilizing policy updates.
 
 **Data Structure**
 
