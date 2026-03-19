@@ -116,6 +116,6 @@ This rich representation provides spatial, reachability, and territorial informa
 - Implementation references and default hyperparameters from CleanRL: Clean, Single-File Implementations of Deep Reinforcement Learning Algorithms. https://github.com/vwxyzjn/cleanrl
 
 **AI Tool Usage:**
-- ChatGPT and Claude: code assistance, algorithm explanation, error analysis, and report writing
+- ChatGPT and Claude: code assistance, algorithm explanation, error analysis, and report grammar check
 
 
