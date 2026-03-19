@@ -22,7 +22,7 @@ Our approach can be broken down into the implementation and evaluation of two re
 
 #### Deep Q-Networks (DQN)
 
-Deep Q-Networks (Mnih et al., 2013) combine value-based Q-learning with deep neural networks to handle high-dimensional state spaces. The core idea is to learn an action-value function $Q(s,a)$ that estimates the expected cumulative reward for taking action $a$ in state $s$. The key algorithm is **experience replay**: past transitions are stored in a buffer and sampled uniformly for training, which breaks temporal correlations in the data stream and improves sample efficiency.
+Deep Q-Networks (Mnih et al., 2013) combine value-based Q-learning with deep neural networks to handle high-dimensional state spaces. The core idea is to learn an action-value function Q(s,a) that estimates the expected cumulative reward for taking action a in state s. The key algorithm is **experience replay**: past transitions are stored in a buffer and sampled uniformly for training, which breaks temporal correlations in the data stream and improves sample efficiency.
 
 We use Double DQN (van Hasselt et al., 2016) to mitigate overestimation bias and Dueling DQN (Wang et al., 2016) to separately learn state value and action advantages. These enhancements allow the network to learn more robust value estimates.
 
@@ -32,11 +32,11 @@ The replay buffer stores transitions in a circular array:
 
 | Component | Shape / Type | Description |
 |---|---|---|
-| State $s_t$ | (7, 20, 20) | 7-channel grid observation |
-| Action $a_t$ | int ∈ [0, 3] | Discrete action (UP, RIGHT, DOWN, LEFT) |
-| Reward $r_t$ | float | Immediate reward |
-| Next state $s_{t+1}$ | (7, 20, 20) | Resulting state |
-| Done flag $d_t$ | bool | Episode termination indicator |
+| State s_t | (7, 20, 20) | 7-channel grid observation |
+| Action a_t | int ∈ [0, 3] | Discrete action (UP, RIGHT, DOWN, LEFT) |
+| Reward r_t | float | Immediate reward |
+| Next state s_t+1 | (7, 20, 20) | Resulting state |
+| Done flag d_t | bool | Episode termination indicator |
 
 Buffer capacity: 200,000 transitions (standard for mid-scale tasks; Mnih et al., 2015 used 1M for Atari).
 
@@ -51,7 +51,7 @@ function SampleMinibatch(replay_buffer, batch_size):
     return batch.states, batch.actions, batch.rewards, batch.next_states, batch.dones
 ```
 
-For Prioritized Experience Replay (optional enhancement), transitions are sampled proportionally to their TD error: $P(i) \propto (|\delta_i| + \epsilon)^\alpha$, with importance-sampling correction weights $w_i = (N \cdot P(i))^{-\beta}$ (Schaul et al., 2016; $\alpha=0.6$, $\beta=0.4$).
+For Prioritized Experience Replay (optional enhancement), transitions are sampled proportionally to their TD error (magnitude of temporal difference). Importance-sampling correction weights scale down high-probability transitions to prevent bias. Hyperparameters: alpha=0.6 (prioritization strength), beta=0.4 (importance-weight annealing start), epsilon=small constant for numerical stability (Schaul et al., 2016).
 
 **Loss Equation**
 
@@ -59,18 +59,18 @@ DQN minimizes the Huber loss (Huber, 1964) to handle outliers:
 
 $$\mathcal{L}(\theta) = \mathbb{E}_{(s,a,r,s',d)} \left[ \mathcal{H} \Big( r + \gamma Q_{\theta^-}(s', \arg\max_{a'} Q_\theta(s', a')) \cdot (1-d) - Q_\theta(s, a) \Big) \right]$$
 
-where $\mathcal{H}(x) = \begin{cases} \frac{1}{2}x^2 & |x| \le 1 \\ |x| - \frac{1}{2} & \text{else} \end{cases}$
+where Huber loss clips gradients for outliers:
 
-- $Q_\theta$: online network weights
-- $Q_{\theta^-}$: target network weights (updated every 10,000 steps)
-- $\gamma = 0.99$: discount factor (standard; Sutton & Barto, 2018)
-- $d$: done flag (masks future rewards at episode end)
+- Q(theta): online network weights
+- Q(theta'): target network weights (updated every 10,000 steps)
+- gamma = 0.99: discount factor (standard; Sutton & Barto, 2018)
+- d: done flag (masks future rewards at episode end)
 
 **Dueling architecture** (Wang et al., 2016) decomposes the Q-value:
 
 $$Q(s,a) = V(s) + \left( A(s,a) - \frac{1}{|A|}\sum_{a'} A(s,a') \right)$$
 
-This allows separate learning of state value $V(s)$ and action advantages $A(s,a)$, improving stability and generalization.
+This allows separate learning of state value V(s) and action advantages A(s,a), improving stability and generalization.
 
 **Tron Application**
 
@@ -86,10 +86,10 @@ This allows separate learning of state value $V(s)$ and action advantages $A(s,a
 *Action Space:* Discrete(4) representing {UP, RIGHT, DOWN, LEFT}. Reverse moves (immediate 180° turn) and instantly lethal moves are masked during exploration via the action masking heuristic.
 
 *Reward Structure:*
-- $+1$ per step survived
-- $+10$ for winning (opponent crashes)
-- $-10$ for losing (agent crashes)
-- $+0.1 \times \frac{\text{agent territory} - \text{opp territory}}{\text{total cells}}$ (Voronoi shaping bonus, per step)
+- +1 per step survived
+- +10 for winning (opponent crashes)
+- -10 for losing (agent crashes)
+- +0.1 × (agent territory - opponent territory) / total cells (Voronoi shaping bonus, per step)
 
 *Training Schedule:*
 - Total environment steps: 2,000,000
@@ -98,7 +98,7 @@ This allows separate learning of state value $V(s)$ and action advantages $A(s,a
 - Target network hard-update: every 10,000 steps
 - Total training duration: ~500k gradient updates
 
-*Hyperparameters (with Sources):*
+*Hyperparameters:*
 
 | Parameter | Value | Source / Justification |
 |---|---|---|
@@ -127,13 +127,13 @@ CNN backbone: 4 convolutional layers (ReLU activations):
 Dueling heads:
 - Value head: FC(512 → 1)
 - Advantage head: FC(512 → 4)
-- Combined: $Q = V + (A - \text{mean}(A))$
+- Combined: Q = V + (A - mean(A))
 
 ---
 
 #### Proximal Policy Optimization (PPO)
 
-PPO (Schulman et al., 2017) is a policy gradient method that learns a stochastic policy $\pi_\theta(a|s)$ and value function via clipped policy objectives. Unlike DQN, PPO is **on-policy**: it collects fresh trajectories from the current policy for each update. The clipping mechanism prevents large, destabilizing policy updates.
+PPO (Schulman et al., 2017) is a policy gradient method that learns a stochastic policy pi(a|s) and value function via clipped policy objectives. Unlike DQN, PPO is **on-policy**: it collects fresh trajectories from the current policy for each update. The clipping mechanism prevents large, destabilizing policy updates.
 
 **Data Structure**
 
@@ -154,19 +154,21 @@ After rollout, compute GAE advantages, shuffle, and update over 10 epochs in min
 
 **Loss Equation**
 
-GAE (Schulman et al., 2016): $\hat{A}_t = \sum_{l=0}^{\infty} (\gamma\lambda)^l \delta_{t+l}^V$ with $\gamma=0.99$, $\lambda=0.95$.
+GAE (Schulman et al., 2016): Generalized Advantage Estimation with gamma=0.99, lambda=0.95.
 
-PPO loss: $\mathcal{L} = \mathbb{E}_t[\mathcal{L}^{\text{CLIP}} - c_e \mathcal{H}[\pi] + c_v \mathcal{L}^V]$
+PPO loss combines three components: clipped policy loss, value loss, and entropy bonus:
 
-$$\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t,\, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)], \quad \mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2$$
+$$\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)]$$
 
-where $r_t = \pi_\theta(a_t|s_t) / \pi_{\text{old}}(a_t|s_t)$, $\epsilon=0.2$, $c_e=0.01$, $c_v=0.5$.
+$$\mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2$$
+
+where r_t = pi_theta(a_t|s_t) / pi_old(a_t|s_t), epsilon=0.2, c_e=0.01, c_v=0.5.
 
 **Tron Application**
 
 Observation, actions, rewards: identical to DQN. Training: 2M total steps, 2,048-step rollouts, 10 epochs per update. Action masking applied during policy sampling.
 
-**Key Hyperparameters (with Sources):**
+**Hyperparameters:**
 
 | Parameter | Value | Source |
 |---|---|---|
@@ -249,8 +251,9 @@ This representation significantly outperformed simpler 3-channel baselines (bloc
 - Dhariwal, P., Hesse, C., Klimov, O., et al. (2017). OpenAI Baselines. https://github.com/openai/baselines
 - Sutton, R. S., & Barto, A. G. (2018). Reinforcement Learning: An Introduction (2nd ed.). MIT Press.
 
-**CleanRL Implementation Defaults:**
-- Implementation references and default hyperparameters from CleanRL: Clean, Single-File Implementations of Deep Reinforcement Learning Algorithms. https://github.com/vwxyzjn/cleanrl
+**CleanRL Implementation:**
+- Default hyperparameters from CleanRL: Clean Implementations of Deep Reinforcement Learning Algorithms. https://github.com/vwxyzjn/cleanrl
+
 
 **AI Tool Usage:**
 - ChatGPT and Claude: code assistance, algorithm explanation, error analysis, and report grammar check
