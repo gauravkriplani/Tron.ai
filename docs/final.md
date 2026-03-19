@@ -55,7 +55,7 @@ For Prioritized Experience Replay (optional enhancement), transitions are sample
 
 DQN minimizes the Huber loss (Huber, 1964) to handle outliers:
 
-\[\mathcal{L}(\theta) = \mathbb{E}_{(s,a,r,s',d)} \left[ \mathcal{H} \Big( r + \gamma Q_{\theta^-}(s', \arg\max_{a'} Q_\theta(s', a')) \cdot (1-d) - Q_\theta(s, a) \Big) \right]\]
+$$\mathcal{L}(\theta) = \mathbb{E}_{(s,a,r,s',d)} \left[ \mathcal{H} \Big( r + \gamma Q_{\theta^-}(s', \arg\max_{a'} Q_\theta(s', a')) \cdot (1-d) - Q_\theta(s, a) \Big) \right]$$
 
 where Huber loss clips gradients for outliers:
 
@@ -66,7 +66,7 @@ where Huber loss clips gradients for outliers:
 
 **Dueling architecture** (Wang et al., 2016) decomposes the Q-value:
 
-\[Q(s,a) = V(s) + \left( A(s,a) - \frac{1}{|A|}\sum_{a'} A(s,a') \right)\]
+$$Q(s,a) = V(s) + \left( A(s,a) - \frac{1}{|A|}\sum_{a'} A(s,a') \right)$$
 
 This allows separate learning of state value V(s) and action advantages A(s,a), improving stability and generalization.
 
@@ -156,9 +156,9 @@ GAE (Schulman et al., 2016): Generalized Advantage Estimation with gamma=0.99, l
 
 PPO loss combines three components: clipped policy loss, value loss, and entropy bonus:
 
-\[\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)]\]
+$$\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)]$$
 
-\[\mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2\]
+$$\mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2$$
 
 where r_t = pi_theta(a_t|s_t) / pi_old(a_t|s_t), epsilon=0.2, c_e=0.01, c_v=0.5.
 
@@ -228,6 +228,23 @@ This prevents trivial learning failures where agents spend countless steps crash
 This representation significantly outperformed simpler 3-channel baselines (blocked, self head, opponent head) and provided agents with strategic information for long-term planning.
 
 ### Evaluation
+We evaluated our DQN agent against 2 heuristic baseline opponents: a random agent, which selects at random from a set of non-lethal actions, and a space-greedy agent, that greedily maximizes its Voronoi territory, Voronoi meaning the amount of free cells that the agent is closer to than its opponent. All evaluations are conducted on a 20x20 grid, over 500 games, with fixed random seeds for reproducibility. We measured two primary metrics: win rate (percentage of games where the opponent crashes first) and average episode length (how long the game lasted), which aims to capture the agent’s survival skill. 
+
+![Win Rate Progression](assets/win_rate_progression.png)
+
+This figure shows the win rate progression across the 5 training stages. The baseline DQN agent, with 3 channel observation, only achieved a 60.4% win rate against the random opponent. The 6 channel agent added in three new channels that helped the agent understand its surroundings better, which raised its win rate to 85% against the random opponent. Finally, we introduced a Voronoi territory channel to the agent, which raised its win rate to 93.5% against the random opponent. All of these agents were trained against the random opponent.
+
+At this point, we decided to move our sights onto the space-greedy agent, which our current agent was performing quite poorly against (15.5% win rate). We knew that to beat the space_greedy agent, we would need more than just observational improvements. And so we reevaluated our model architecture, rewards, and training stages. We started by expanding the CNN from 3 layers to 4 layers, with the hope that this would give the agent the ability to learn more complex patterns. We also added a small territory based reward, with the idea of giving the agent more nuanced feedback, although this reward could be seen as pushing the agent towards a certain strategy (space_greedy), and so we may remove it later. Finally, we decided to train this agent in two stages. We first trained the agent against the random opponent, in order to build basic survival skills. From there, we took that agent and trained it against the space greedy opponent. This two step approach made sure that the agent could establish fundamentals, to compete and meaningfully learn from facing a strong opponent. 
+
+![Game Outcome Distribution Across Training Stages](assets/game_distribution.png)
+
+This figure shows the game length distribution of the different DQN agents we trained. All the games vs random seemed to average out to 35 steps, reflecting the random agent’s poor survival skills. In contrast, the games against space_greedy’s agent were significantly longer, and increased as our agent’s skill increased, indicating that our model’s survival skills were the bottleneck, and not space_greedy’s.
+
+![PPO Win Rate Progression](assets/ppo_win_rate_progression.png)
+
+Next, we decided to try to train a PPO agent, as PPO is generally considered better for complex, high dimensional, or continuous control tasks, compared to DQN. Taking the same reward structure and input channels from our highest performing DQN agent, We first started by training PPO directly against space_greedy, which did not perform very well. So we decided to try the curriculum training approach, training PPO (Phase 1) against the random opponent, with the goal of developing basic survival behavior, and taking the Phase 1 policy and continuing to train it against space_greedy. This progression proved effective, as the agent improved steadily across phases, ultimately achieving a 50% win rate against space_greedy. 
+
+However, despite these improvements, DQN still outperformed PPO in our setting. We believe this is because of how, in Tron, the action space is small and discrete, only consisting of 4 movement choices. This setting favors DQN, since the network can directly estimate the value of each possible action, and select the best one at every step. PPO, on the other hand, outputs probabilities for the 4 possible moves, a style that is more effective with fine grained/continuous control (e.g steering), but is not a great fit for this problem.
 
 ### Resources Used
 
