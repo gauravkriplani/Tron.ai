@@ -57,7 +57,7 @@ For Prioritized Experience Replay (optional enhancement), transitions are sample
 
 DQN minimizes the Huber loss (Huber, 1964) to handle outliers:
 
-$$\mathcal{L}(\theta) = \mathbb{E}_{(s,a,r,s',d)} \left[ \mathcal{H} \Big( r + \gamma Q_{\theta^-}(s', \arg\max_{a'} Q_\theta(s', a')) \cdot (1-d) - Q_\theta(s, a) \Big) \right]$$
+\[\mathcal{L}(\theta) = \mathbb{E}_{(s,a,r,s',d)} \left[ \mathcal{H} \Big( r + \gamma Q_{\theta^-}(s', \arg\max_{a'} Q_\theta(s', a')) \cdot (1-d) - Q_\theta(s, a) \Big) \right]\]
 
 where Huber loss clips gradients for outliers:
 
@@ -68,7 +68,7 @@ where Huber loss clips gradients for outliers:
 
 **Dueling architecture** (Wang et al., 2016) decomposes the Q-value:
 
-$$Q(s,a) = V(s) + \left( A(s,a) - \frac{1}{|A|}\sum_{a'} A(s,a') \right)$$
+\[Q(s,a) = V(s) + \left( A(s,a) - \frac{1}{|A|}\sum_{a'} A(s,a') \right)\]
 
 This allows separate learning of state value V(s) and action advantages A(s,a), improving stability and generalization.
 
@@ -158,9 +158,9 @@ GAE (Schulman et al., 2016): Generalized Advantage Estimation with gamma=0.99, l
 
 PPO loss combines three components: clipped policy loss, value loss, and entropy bonus:
 
-$$\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)]$$
+\[\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)]\]
 
-$$\mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2$$
+\[\mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2\]
 
 where r_t = pi_theta(a_t|s_t) / pi_old(a_t|s_t), epsilon=0.2, c_e=0.01, c_v=0.5.
 
