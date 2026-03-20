@@ -154,13 +154,15 @@ After rollout, compute GAE advantages, shuffle, and update over 10 epochs in min
 
 GAE (Schulman et al., 2016): Generalized Advantage Estimation with gamma=0.99, lambda=0.95.
 
-PPO loss combines three components: clipped policy loss, value loss, and entropy bonus:
+PPO combines three components: clipped policy loss, value loss, and entropy bonus:
 
-$$\mathcal{L}^{\text{CLIP}} = \mathbb{E}_t[\min(r_t \hat{A}_t, \text{clip}(r_t, 1-\epsilon, 1+\epsilon)\hat{A}_t)]$$
+$$\mathcal{L}^{\text{CLIP}}(\theta) = \hat{\mathbb{E}}_t\left[\min\left(r_t(\theta)\,\hat{A}_t,\ \text{clip}\left(r_t(\theta),\,1-\varepsilon,\,1+\varepsilon\right)\hat{A}_t\right)\right]$$
 
-$$\mathcal{L}^V = \frac{1}{2}(V_\theta(s_t) - \hat{R}_t)^2$$
+$$\mathcal{L}^{V}(\theta) = \frac{1}{2}\left(V_\theta(s_t) - \hat{R}_t\right)^2$$
 
-where r_t = pi_theta(a_t|s_t) / pi_old(a_t|s_t), epsilon=0.2, c_e=0.01, c_v=0.5.
+$$\mathcal{L}(\theta) = \mathcal{L}^{\text{CLIP}}(\theta) - c_v\,\mathcal{L}^{V}(\theta) + c_e\,S[\pi_\theta](s_t)$$
+
+where $r_t(\theta) = \pi_\theta(a_t|s_t)\,/\,\pi_{\text{old}}(a_t|s_t)$, $\varepsilon = 0.2$, $c_v = 0.5$, $c_e = 0.01$.
 
 **Tron Application**
 
