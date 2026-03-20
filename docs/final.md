@@ -1,6 +1,6 @@
 ---
 layout: default
-title:  Final Report
+title: Final Report
 ---
 
 <div class="video-container">
@@ -15,9 +15,6 @@ title:  Final Report
 Our project studies how to train intelligent agents for Tron, an arcade-style light-cycle game where two players move simultaneously on a grid and leave permanent trails that become walls. The problem we address is learning a policy that can make strong decisions in real time under adversarial pressure: the agent must avoid immediate collisions while also planning several steps ahead to control space and force the opponent into losing positions. This is challenging because the game state changes every turn, rewards are delayed (good or bad consequences often appear later), and a locally “safe” move can still lead to a strategic loss. In other words, the agent must reason about both short-term survival and long-term territorial advantage in a non-stationary environment where both players continuously reshape the board.
 
 The goal of the project is to design, train, and evaluate reinforcement learning agents that can discover effective survival and trapping strategies directly from game observations, then compare value-based and policy-based approaches in the same environment. We evaluate methods such as DQN and PPO against heuristic opponents using win rate, survival time, and cumulative reward. This problem is not trivial to solve with hand-written rules alone: heuristics can handle obvious local dangers, but they break down across the enormous number of possible board configurations and opponent responses. AI/ML is necessary because reinforcement learning can learn nuanced, high-dimensional decision patterns from experience, enabling behaviors like zoning, baiting, and timing that are difficult to encode manually and essential for strong competitive play.
-
-
-
 
 ### Approaches
 
@@ -35,13 +32,13 @@ We use Double DQN (van Hasselt et al., 2016) to mitigate overestimation bias and
 
 The replay buffer stores transitions in a circular array:
 
-| Component | Shape / Type | Description |
-|---|---|---|
-| State s_t | (7, 20, 20) | 7-channel grid observation |
-| Action a_t | int ∈ [0, 3] | Discrete action (UP, RIGHT, DOWN, LEFT) |
-| Reward r_t | float | Immediate reward |
-| Next state s_t+1 | (7, 20, 20) | Resulting state |
-| Done flag d_t | bool | Episode termination indicator |
+| Component        | Shape / Type | Description                             |
+| ---------------- | ------------ | --------------------------------------- |
+| State s_t        | (7, 20, 20)  | 7-channel grid observation              |
+| Action a_t       | int ∈ [0, 3] | Discrete action (UP, RIGHT, DOWN, LEFT) |
+| Reward r_t       | float        | Immediate reward                        |
+| Next state s_t+1 | (7, 20, 20)  | Resulting state                         |
+| Done flag d_t    | bool         | Episode termination indicator           |
 
 Buffer capacity: 200,000 transitions (standard for mid-scale tasks; Mnih et al., 2015 used 1M for Atari).
 
@@ -79,7 +76,8 @@ This allows separate learning of state value V(s) and action advantages A(s,a), 
 
 **Tron Application**
 
-*Observation Space:* 7-channel grid (20×20 pixels):
+_Observation Space:_ 7-channel grid (20×20 pixels):
+
 - Ch 0: Blocked cells (walls + both agents' trails)
 - Ch 1: Agent head position (one-hot encoded)
 - Ch 2: Opponent head position (one-hot encoded)
@@ -88,41 +86,44 @@ This allows separate learning of state value V(s) and action advantages A(s,a), 
 - Ch 5: Reachable area via flood-fill from agent head
 - Ch 6: Voronoi territory (1 if agent closer, 0 if opponent closer, 0.5 if tied)
 
-*Action Space:* Discrete(4) representing {UP, RIGHT, DOWN, LEFT}. Reverse moves (immediate 180° turn) and instantly lethal moves are masked during exploration via the action masking heuristic.
+_Action Space:_ Discrete(4) representing {UP, RIGHT, DOWN, LEFT}. Reverse moves (immediate 180° turn) and instantly lethal moves are masked during exploration via the action masking heuristic.
 
-*Reward Structure:*
+_Reward Structure:_
+
 - +1 per step survived
 - +10 for winning (opponent crashes)
 - -10 for losing (agent crashes)
 - +0.1 × (agent territory - opponent territory) / total cells (Voronoi shaping bonus, per step)
 
-*Training Schedule:*
+_Training Schedule:_
+
 - Total environment steps: 2,000,000
 - Warm-up steps before training: 20,000 (allow buffer to accumulate)
 - Training frequency: every 4 steps (standard; Mnih et al., 2015)
 - Target network hard-update: every 10,000 steps
 - Total training duration: ~500k gradient updates
 
-*Hyperparameters:*
+_Hyperparameters:_
 
-| Parameter | Value | Source / Justification |
-|---|---|---|
-| Buffer capacity | 200,000 | Standard for mid-scale (Mnih et al., 2015 used 1M for Atari) |
-| Batch size | 128 | Increased from 32 (Mnih et al., 2015) for stability on smaller grid |
-| Discount (gamma) | 0.99 | Standard default (Sutton & Barto, 2018) |
-| Learning rate | 1e-4 | Standard for Adam optimizer in DQN literature |
-| Warm-up steps | 20,000 | Tuned to ensure 10% buffer filled before learning begins |
-| Train frequency | Every 4 steps | Standard (Mnih et al., 2015) |
-| Target update interval | 10,000 steps | Standard hard-update interval (Mnih et al., 2015) |
-| Epsilon start | 1.0 | Standard; full exploration initially |
-| Epsilon end | 0.05 | Tuned; lower than typical 0.1 to encourage exploitation of learned policy |
-| Epsilon decay duration | 1,000,000 steps | Tuned empirically; decays over ~50% of total training |
-| PER alpha | 0.6 | Default (Schaul et al., 2016) |
-| PER beta start | 0.4 | Default; anneals to 1.0 over training (Schaul et al., 2016) |
+| Parameter              | Value           | Source / Justification                                                    |
+| ---------------------- | --------------- | ------------------------------------------------------------------------- |
+| Buffer capacity        | 200,000         | Standard for mid-scale (Mnih et al., 2015 used 1M for Atari)              |
+| Batch size             | 128             | Increased from 32 (Mnih et al., 2015) for stability on smaller grid       |
+| Discount (gamma)       | 0.99            | Standard default (Sutton & Barto, 2018)                                   |
+| Learning rate          | 1e-4            | Standard for Adam optimizer in DQN literature                             |
+| Warm-up steps          | 20,000          | Tuned to ensure 10% buffer filled before learning begins                  |
+| Train frequency        | Every 4 steps   | Standard (Mnih et al., 2015)                                              |
+| Target update interval | 10,000 steps    | Standard hard-update interval (Mnih et al., 2015)                         |
+| Epsilon start          | 1.0             | Standard; full exploration initially                                      |
+| Epsilon end            | 0.05            | Tuned; lower than typical 0.1 to encourage exploitation of learned policy |
+| Epsilon decay duration | 1,000,000 steps | Tuned empirically; decays over ~50% of total training                     |
+| PER alpha              | 0.6             | Default (Schaul et al., 2016)                                             |
+| PER beta start         | 0.4             | Default; anneals to 1.0 over training (Schaul et al., 2016)               |
 
 **Network Architecture**
 
 CNN backbone: 4 convolutional layers (ReLU activations):
+
 - Conv(in=7, out=32, kernel=3×3, stride=2, padding=1)
 - Conv(in=32, out=64, kernel=3×3, stride=2, padding=1)
 - Conv(in=64, out=128, kernel=3×3, stride=2, padding=1)
@@ -130,6 +131,7 @@ CNN backbone: 4 convolutional layers (ReLU activations):
 - Flatten → FC(512, ReLU)
 
 Dueling heads:
+
 - Value head: FC(512 → 1)
 - Advantage head: FC(512 → 4)
 - Combined: Q = V + (A - mean(A))
@@ -170,22 +172,24 @@ $$\mathcal{L}^{V}(\theta) = \frac{1}{2}\left(V_\theta(s_t) - \hat{R}_t\right)^2$
 $$\mathcal{L}(\theta) = \mathcal{L}^{\text{CLIP}}(\theta) - c_v\,\mathcal{L}^{V}(\theta) + c_e\,S[\pi_\theta](s_t)$$
 
 $$\mathcal{L}(\theta) \text{ where } r_t(\theta) = \frac{\pi_\theta(a_t|s_t)}{\pi_{\text{old}}(a_t|s_t)}, \quad \varepsilon = 0.2, \quad c_v = 0.5, \quad c_e = 0.01$$
+
+
 **Tron Application**
 
 Observation, actions, rewards: identical to DQN. Training: 2M total steps, 2,048-step rollouts, 10 epochs per update. Action masking applied during policy sampling.
 
 **Hyperparameters:**
 
-| Parameter | Value | Source |
-|---|---|---|
-| Rollout length | 2,048 | CleanRL / Schulman et al., 2017 |
-| Update epochs | 10 | CleanRL |
-| Discount (gamma) | 0.99 | Standard |
-| GAE lambda | 0.95 | Schulman et al., 2016 |
-| Learning rate | 3e-4 | CleanRL default |
-| Entropy coef | 0.01 | CleanRL |
-| Value coef | 0.5 | CleanRL |
-| Grad norm clip | 0.5 | CleanRL |
+| Parameter        | Value | Source                          |
+| ---------------- | ----- | ------------------------------- |
+| Rollout length   | 2,048 | CleanRL / Schulman et al., 2017 |
+| Update epochs    | 10    | CleanRL                         |
+| Discount (gamma) | 0.99  | Standard                        |
+| GAE lambda       | 0.95  | Schulman et al., 2016           |
+| Learning rate    | 3e-4  | CleanRL default                 |
+| Entropy coef     | 0.01  | CleanRL                         |
+| Value coef       | 0.5   | CleanRL                         |
+| Grad norm clip   | 0.5   | CleanRL                         |
 
 **Network Architecture:** Shared 4-layer CNN (32, 64, 128, 128 filters) → FC 512 → actor (4 logits) and critic (1 value) heads.
 
@@ -211,12 +215,12 @@ function GetSafeActions(obs):
     blocked_cells = obs[0]
     agent_head = extract_position(obs[1])
     safe_actions = []
-    
+
     for action in [UP, RIGHT, DOWN, LEFT]:
         next_head = agent_head + action_delta[action]
         if in_bounds(next_head) and not blocked_cells[next_head]:
             safe_actions.append(action)
-    
+
     return safe_actions if non-empty else [all actions]
 ```
 
@@ -224,25 +228,26 @@ This prevents trivial learning failures where agents spend countless steps crash
 
 **7-Channel Observation Space:** Designed to provide complementary spatial signals:
 
-| Channel | Content | Purpose |
-|---|---|---|
-| 0 | Blocked cells | Direct state representation |
-| 1-2 | Agent & opponent heads | Immediate position awareness |
-| 3 | Agent trail | Own movement history |
-| 4 | BFS distance to obstacle | Reachability without lookahead |
-| 5 | Flood-fill reachable area | Free space from agent's perspective |
-| 6 | Voronoi territory | Relative space control metric |
+| Channel | Content                   | Purpose                             |
+| ------- | ------------------------- | ----------------------------------- |
+| 0       | Blocked cells             | Direct state representation         |
+| 1-2     | Agent & opponent heads    | Immediate position awareness        |
+| 3       | Agent trail               | Own movement history                |
+| 4       | BFS distance to obstacle  | Reachability without lookahead      |
+| 5       | Flood-fill reachable area | Free space from agent's perspective |
+| 6       | Voronoi territory         | Relative space control metric       |
 
 This representation significantly outperformed simpler 3-channel baselines (blocked, self head, opponent head) and provided agents with strategic information for long-term planning.
 
 ### Evaluation
-We evaluated our DQN agent against 2 heuristic baseline opponents: a random agent, which selects at random from a set of non-lethal actions, and a space-greedy agent, that greedily maximizes its Voronoi territory, Voronoi meaning the amount of free cells that the agent is closer to than its opponent. All evaluations are conducted on a 20x20 grid, over 500 games, with fixed random seeds for reproducibility. We measured two primary metrics: win rate (percentage of games where the opponent crashes first) and average episode length (how long the game lasted), which aims to capture the agent’s survival skill. 
+
+We evaluated our DQN agent against 2 heuristic baseline opponents: a random agent, which selects at random from a set of non-lethal actions, and a space-greedy agent, that greedily maximizes its Voronoi territory, Voronoi meaning the amount of free cells that the agent is closer to than its opponent. All evaluations are conducted on a 20x20 grid, over 500 games, with fixed random seeds for reproducibility. We measured two primary metrics: win rate (percentage of games where the opponent crashes first) and average episode length (how long the game lasted), which aims to capture the agent’s survival skill.
 
 ![Win Rate Progression](assets/win_rate_progression.png)
 
 This figure shows the win rate progression across the 5 training stages. The baseline DQN agent, with 3 channel observation, only achieved a 60.4% win rate against the random opponent. The 6 channel agent added in three new channels that helped the agent understand its surroundings better, which raised its win rate to 85% against the random opponent. Finally, we introduced a Voronoi territory channel to the agent, which raised its win rate to 93.5% against the random opponent. All of these agents were trained against the random opponent.
 
-At this point, we decided to move our sights onto the space-greedy agent, which our current agent was performing quite poorly against (15.5% win rate). We knew that to beat the space_greedy agent, we would need more than just observational improvements. And so we reevaluated our model architecture, rewards, and training stages. We started by expanding the CNN from 3 layers to 4 layers, with the hope that this would give the agent the ability to learn more complex patterns. We also added a small territory based reward, with the idea of giving the agent more nuanced feedback, although this reward could be seen as pushing the agent towards a certain strategy (space_greedy), and so we may remove it later. Finally, we decided to train this agent in two stages. We first trained the agent against the random opponent, in order to build basic survival skills. From there, we took that agent and trained it against the space greedy opponent. This two step approach made sure that the agent could establish fundamentals, to compete and meaningfully learn from facing a strong opponent. 
+At this point, we decided to move our sights onto the space-greedy agent, which our current agent was performing quite poorly against (15.5% win rate). We knew that to beat the space_greedy agent, we would need more than just observational improvements. And so we reevaluated our model architecture, rewards, and training stages. We started by expanding the CNN from 3 layers to 4 layers, with the hope that this would give the agent the ability to learn more complex patterns. We also added a small territory based reward, with the idea of giving the agent more nuanced feedback, although this reward could be seen as pushing the agent towards a certain strategy (space_greedy), and so we may remove it later. Finally, we decided to train this agent in two stages. We first trained the agent against the random opponent, in order to build basic survival skills. From there, we took that agent and trained it against the space greedy opponent. This two step approach made sure that the agent could establish fundamentals, to compete and meaningfully learn from facing a strong opponent.
 
 ![Game Outcome Distribution Across Training Stages](assets/game_distribution.png)
 
@@ -250,19 +255,21 @@ This figure shows the game length distribution of the different DQN agents we tr
 
 ![PPO Win Rate Progression](assets/ppo_win_rate_progression.png)
 
-Next, we decided to try to train a PPO agent, as PPO is generally considered better for complex, high dimensional, or continuous control tasks, compared to DQN. Taking the same reward structure and input channels from our highest performing DQN agent, We first started by training PPO directly against space_greedy, which did not perform very well. So we decided to try the curriculum training approach, training PPO (Phase 1) against the random opponent, with the goal of developing basic survival behavior, and taking the Phase 1 policy and continuing to train it against space_greedy. This progression proved effective, as the agent improved steadily across phases, ultimately achieving a 50% win rate against space_greedy. 
+Next, we decided to try to train a PPO agent, as PPO is generally considered better for complex, high dimensional, or continuous control tasks, compared to DQN. Taking the same reward structure and input channels from our highest performing DQN agent, We first started by training PPO directly against space_greedy, which did not perform very well. So we decided to try the curriculum training approach, training PPO (Phase 1) against the random opponent, with the goal of developing basic survival behavior, and taking the Phase 1 policy and continuing to train it against space_greedy. This progression proved effective, as the agent improved steadily across phases, ultimately achieving a 50% win rate against space_greedy.
 
 However, despite these improvements, DQN still outperformed PPO in our setting. We believe this is because of how, in Tron, the action space is small and discrete, only consisting of 4 movement choices. This setting favors DQN, since the network can directly estimate the value of each possible action, and select the best one at every step. PPO, on the other hand, outputs probabilities for the 4 possible moves, a style that is more effective with fine grained/continuous control (e.g steering), but is not a great fit for this problem.
 
 ### Resources Used
 
 **Tools & Libraries:**
+
 - NumPy: numerical computations and array operations (Harris et al., 2020)
 - PyTorch: neural network implementation and deep learning (Paszke et al., 2019)
 - Gymnasium: standard RL environment API (Towers et al., 2023)
 - Pygame: visualization and human-vs-AI gameplay (Pygame Community, n.d.)
 
 **Algorithmic References:**
+
 - Huber, P. J. (1964). Robust estimation of a location parameter. Annals of Mathematical Statistics, 35(1), 73-101.
 - Mnih, V., Kavukcuoglu, K., Silver, D., et al. (2013). Playing Atari with Deep Reinforcement Learning. arXiv preprint arXiv:1312.5602.
 - Mnih, V., Badia, A. P., Mirza, M., et al. (2016). Asynchronous Methods for Deep Reinforcement Learning. In International Conference on Machine Learning (ICML).
@@ -275,10 +282,9 @@ However, despite these improvements, DQN still outperformed PPO in our setting. 
 - Sutton, R. S., & Barto, A. G. (2018). Reinforcement Learning: An Introduction (2nd ed.). MIT Press.
 
 **CleanRL Implementation:**
+
 - Default hyperparameters from CleanRL: Clean Implementations of Deep Reinforcement Learning Algorithms. https://github.com/vwxyzjn/cleanrl
 
-
 **AI Tool Usage:**
+
 - ChatGPT and Claude: code assistance, algorithm explanation, error analysis, and report grammar check
-
-
