@@ -162,7 +162,8 @@ $$\mathcal{L}^{V}(\theta) = \frac{1}{2}\left(V_\theta(s_t) - \hat{R}_t\right)^2$
 
 $$\mathcal{L}(\theta) = \mathcal{L}^{\text{CLIP}}(\theta) - c_v\,\mathcal{L}^{V}(\theta) + c_e\,S[\pi_\theta](s_t)$$
 
-where $r_t(\theta) = \pi_\theta(a_t|s_t)\,/\,\pi_{\text{old}}(a_t|s_t)$, $\varepsilon = 0.2$, $c_v = 0.5$, $c_e = 0.01$.
+where $r_t(\theta) = \pi_\theta(a_t|s_t)/\pi_{\text{old}}(a_t|s_t)$, $\varepsilon = 0.2$, $c_v = 0.5$, $c_e = 0.01$.
+
 
 **Tron Application**
 
