@@ -3,6 +3,8 @@ layout: default
 title: Final Report
 ---
 
+### Video
+
 <div class="video-container">
     <video controls width="640" height="360">
         <source src="{{ 'assets/175-final-video.mp4' | relative_url }}" type="video/mp4">
@@ -120,6 +122,8 @@ _Hyperparameters:_
 | PER alpha              | 0.6             | Default (Schaul et al., 2016)                                             |
 | PER beta start         | 0.4             | Default; anneals to 1.0 over training (Schaul et al., 2016)               |
 
+---
+
 **Network Architecture**
 
 CNN backbone: 4 convolutional layers (ReLU activations):
@@ -191,6 +195,8 @@ Observation, actions, rewards: identical to DQN. Training: 2M total steps, 2,048
 | Value coef       | 0.5   | CleanRL                         |
 | Grad norm clip   | 0.5   | CleanRL                         |
 
+---
+
 **Network Architecture:** Shared 4-layer CNN (32, 64, 128, 128 filters) → FC 512 → actor (4 logits) and critic (1 value) heads.
 
 ---
@@ -243,17 +249,26 @@ This representation significantly outperformed simpler 3-channel baselines (bloc
 
 We evaluated our DQN agent against 2 heuristic baseline opponents: a random agent, which selects at random from a set of non-lethal actions, and a space-greedy agent, that greedily maximizes its Voronoi territory, Voronoi meaning the amount of free cells that the agent is closer to than its opponent. All evaluations are conducted on a 20x20 grid, over 500 games, with fixed random seeds for reproducibility. We measured two primary metrics: win rate (percentage of games where the opponent crashes first) and average episode length (how long the game lasted), which aims to capture the agent’s survival skill.
 
+#### DQN vs. Random Opponent
+
 ![Win Rate Progression](assets/win_rate_progression.png)
+**Figure 1.** Win Rate Progression across the 5 training stages.
 
 This figure shows the win rate progression across the 5 training stages. The baseline DQN agent, with 3 channel observation, only achieved a 60.4% win rate against the random opponent. The 6 channel agent added in three new channels that helped the agent understand its surroundings better, which raised its win rate to 85% against the random opponent. Finally, we introduced a Voronoi territory channel to the agent, which raised its win rate to 93.5% against the random opponent. All of these agents were trained against the random opponent.
 
 At this point, we decided to move our sights onto the space-greedy agent, which our current agent was performing quite poorly against (15.5% win rate). We knew that to beat the space_greedy agent, we would need more than just observational improvements. And so we reevaluated our model architecture, rewards, and training stages. We started by expanding the CNN from 3 layers to 4 layers, with the hope that this would give the agent the ability to learn more complex patterns. We also added a small territory based reward, with the idea of giving the agent more nuanced feedback, although this reward could be seen as pushing the agent towards a certain strategy (space_greedy), and so we may remove it later. Finally, we decided to train this agent in two stages. We first trained the agent against the random opponent, in order to build basic survival skills. From there, we took that agent and trained it against the space greedy opponent. This two step approach made sure that the agent could establish fundamentals, to compete and meaningfully learn from facing a strong opponent.
 
+#### DQN vs. Space-Greedy Opponent
+
 ![Game Outcome Distribution Across Training Stages](assets/game_distribution.png)
+**Figure 2.** Game Outcome Distribution Across Training Stages.
 
 This figure shows the game length distribution of the different DQN agents we trained. All the games vs random seemed to average out to 35 steps, reflecting the random agent’s poor survival skills. In contrast, the games against space_greedy’s agent were significantly longer, and increased as our agent’s skill increased, indicating that our model’s survival skills were the bottleneck, and not space_greedy’s.
 
+#### PPO Agent Training and Algorithm Comparison
+
 ![PPO Win Rate Progression](assets/ppo_win_rate_progression.png)
+**Figure 3.** PPO Win Rate Progression across training phases.
 
 Next, we decided to try to train a PPO agent, as PPO is generally considered better for complex, high dimensional, or continuous control tasks, compared to DQN. Taking the same reward structure and input channels from our highest performing DQN agent, We first started by training PPO directly against space_greedy, which did not perform very well. So we decided to try the curriculum training approach, training PPO (Phase 1) against the random opponent, with the goal of developing basic survival behavior, and taking the Phase 1 policy and continuing to train it against space_greedy. This progression proved effective, as the agent improved steadily across phases, ultimately achieving a 50% win rate against space_greedy.
 
